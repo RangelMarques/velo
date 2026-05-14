@@ -1,47 +1,41 @@
-import { test, expect } from '@playwright/test'
-
+import { test, expect } from '../support/fixtures'
 import { generateOrderCode } from '../support/helpers'
+import type { OrderDetails } from '../support/actions/orderLookupActions'
+import { insertOrder, deleteOrderByNumber } from '../support/database/orderRepository'
 
-import { OrderLockupPage } from '../support/pages/OrderLockupPage'
-
-/// AAA - Arrange, Act, Assert
+import testData from '../support/fixtures/orders.json' with { type: 'json' }
 
 test.describe('Consulta de Pedido', () => {
 
-  test.beforeEach(async ({ page }) => {
-    // Arrange
-    await page.goto('http://localhost:5173/')
-    await expect(page.getByTestId('hero-section').getByRole('heading')).toContainText('Velô Sprint')
-
-    await page.getByRole('link', { name: 'Consultar Pedido' }).click()
-    await expect(page.getByRole('heading')).toContainText('Consultar Pedido')
+  test.beforeEach(async ({ app }) => {
+    await app.orderLookup.open()
   })
 
-  test('deve consultar um pedido aprovado', async ({ page }) => {
+  test('deve consultar um pedido aprovado', async ({ app }) => {
 
     // Test Data
-    const order = {
-
+    const order: OrderDetails = {
       number: 'VLO-ZHG2KJ',
       status: 'APROVADO',
       color: 'Glacier Blue',
       wheels: 'sport Wheels',
       customer: {
         name: 'teste rm7 teste',
-        email: 'rm7@teste.com'
+        email: 'rm7@teste.com',
+        document: '1234567890',
+        phone: '11999999999'
       },
-      payment: 'À Vista'
-    } as const
+      payment: 'À Vista',
+      total_price: '10000'
+    }
 
     // Act  
-    const orderLockupPage = new OrderLockupPage(page)
-    await orderLockupPage.searchOrder(order.number)
+    await deleteOrderByNumber(order.number)
+    await insertOrder(order)
 
-    // Assert
-    await orderLockupPage.validateOrderDetails(order)
-
-    // Validação do badge de status encapsulada no Page Object
-    await orderLockupPage.validateStatusBadge(order.status)
+    await app.orderLookup.searchOrder(order.number)
+    await app.orderLockupPage.validateOrderDetails(order)
+    await app.orderLockupPage.validateStatusBadge(order.status)
 
   })
 
