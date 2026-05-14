@@ -4,8 +4,6 @@ import { deleteOrderByEmail } from '../support/database/orderRepository'
 
 test.describe('Checkout', () => {
 
-
-
   test.describe('Validações de campos obrigatórios', () => {
 
     let alerts: any

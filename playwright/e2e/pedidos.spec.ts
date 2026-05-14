@@ -10,99 +10,57 @@ test.describe('Consulta de Pedido', () => {
   test.beforeEach(async ({ app }) => {
     await app.orderLookup.open()
   })
-
+  
   test('deve consultar um pedido aprovado', async ({ app }) => {
+    const order: OrderDetails = testData.aprovado as OrderDetails
 
-    // Test Data
-    const order: OrderDetails = {
-      number: 'VLO-ZHG2KJ',
-      status: 'APROVADO',
-      color: 'Glacier Blue',
-      wheels: 'sport Wheels',
-      customer: {
-        name: 'teste rm7 teste',
-        email: 'rm7@teste.com',
-        document: '1234567890',
-        phone: '11999999999'
-      },
-      payment: 'À Vista',
-      total_price: '10000'
-    }
-
-    // Act  
     await deleteOrderByNumber(order.number)
     await insertOrder(order)
 
     await app.orderLookup.searchOrder(order.number)
-    await app.orderLockupPage.validateOrderDetails(order)
-    await app.orderLockupPage.validateStatusBadge(order.status)
-
+    await app.orderLookup.validateOrderDetails(order)
+    await app.orderLookup.validateStatusBadge(order.status)
   })
 
-  test('deve consultar um pedido reprovado', async ({ page }) => {
+  test('deve consultar um pedido reprovado', async ({ app }) => {
+    const order: OrderDetails = testData.reprovado as OrderDetails
 
-    // Test Data
-    const order = {
+    await deleteOrderByNumber(order.number)
+    await insertOrder(order)
 
-      number: 'VLO-63Y29V',
-      status: 'REPROVADO',
-      color: 'Midnight Black',
-      wheels: 'sport Wheels',
-      customer: {
-        name: 'Steve Jobs',
-        email: 'steve@apple.com'
-      },
-      payment: 'À Vista'
-    } as const
-
-    // Act  
-    const orderLockupPage = new OrderLockupPage(page)
-    await orderLockupPage.searchOrder(order.number)
-
-    // Assert
-    await orderLockupPage.validateOrderDetails(order)
-
-    // Validação do badge de status encapsulada no Page Object
-    await orderLockupPage.validateStatusBadge(order.status)
-
+    await app.orderLookup.searchOrder(order.number)
+    await app.orderLookup.validateOrderDetails(order)
+    await app.orderLookup.validateStatusBadge(order.status)
   })
 
-  test('deve consultar um pedido em analise', async ({ page }) => {
+  test('deve consultar um pedido em analise', async ({ app }) => {
+    const order: OrderDetails = testData.em_analise as OrderDetails
 
-    // Test Data
-    const order = {
+    await deleteOrderByNumber(order.number)
+    await insertOrder(order)
 
-      number: 'VLO-T8T63W',
-      status: 'EM_ANALISE',
-      color: 'Lunar White',
-      wheels: 'aero Wheels',
-      customer: {
-        name: 'João da Silva',
-        email: 'joao@teste.com'
-      },
-      payment: 'À Vista'
-    } as const
-
-    // Act  
-    const orderLockupPage = new OrderLockupPage(page)
-    await orderLockupPage.searchOrder(order.number)
-
-    // Assert
-    await orderLockupPage.validateOrderDetails(order)
-
-    // Validação do badge de status encapsulada no Page Object
-    await orderLockupPage.validateStatusBadge(order.status)
-
+    await app.orderLookup.searchOrder(order.number)
+    await app.orderLookup.validateOrderDetails(order)
+    await app.orderLookup.validateStatusBadge(order.status)
   })
 
-  test('deve exibir mensagem quando o pedido não é encontrado', async ({ page }) => {
-
+  test('deve exibir mensagem quando o pedido não é encontrado', async ({ app }) => {
     const order = generateOrderCode()
+    await app.orderLookup.searchOrder(order)
+    await app.orderLookup.validateOrderNotFound()
+  })
 
-    const orderLockupPage = new OrderLockupPage(page)
-    await orderLockupPage.searchOrder(order)
+  test('deve exibir mensagem quando o código do pedido está fora do padrão', async ({ app }) => {
+    const orderCode = 'XYZ-999-INVALIDO'
+    await app.orderLookup.searchOrder(orderCode)
+    await app.orderLookup.validateOrderNotFound()
+  })
 
-    await orderLockupPage.validateOrderNotFound()
+  test('deve manter o botão de busca desabilitado com campo vazio ou apenas espaços', async ({ app, page }) => {
+    const button = app.orderLookup.elements.searchButton
+    await expect(button).toBeDisabled()
 
+    await app.orderLookup.elements.orderInput.fill('     ')
+    await expect(button).toBeDisabled()
   })
 })

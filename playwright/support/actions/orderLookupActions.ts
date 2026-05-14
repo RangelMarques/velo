@@ -84,8 +84,8 @@ export function createOrderLookupActions(page: Page) {
           icon: 'lucide-circle-x',
         },
         EM_ANALISE: {
-          background: 'bg-amber-100',
-          text: 'text-amber-700',
+          background: 'bg-yellow-100',
+          text: 'text-yellow-700',
           icon: 'lucide-clock',
         },
       } as const
