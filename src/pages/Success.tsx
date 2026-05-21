@@ -42,7 +42,20 @@ const Success = () => {
     return <Navigate to="/" replace />;
   }
 
+  const getStatusTitle = () => {
+    if (order.status === 'APROVADO') return 'Pedido Aprovado!';
+    if (order.status === 'EM_ANALISE') return 'Pedido em Análise!';
+    return 'Pedido Reprovado!';
+  };
+
+  const getStatusMessage = () => {
+    if (order.status === 'APROVADO') return 'Seu pedido foi processado com sucesso. Em breve entraremos em contato.';
+    if (order.status === 'EM_ANALISE') return 'Seu pedido está em análise de crédito. Aguarde nosso contato.';
+    return 'Infelizmente seu crédito não foi aprovado. Tente novamente com pagamento à vista.';
+  };
+
   const isApproved = order.status === 'APROVADO';
+  const isEmAnalise = order.status === 'EM_ANALISE';
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -58,6 +71,10 @@ const Success = () => {
             <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
               <CheckCircle className="w-12 h-12 text-success" />
             </div>
+          ) : isEmAnalise ? (
+            <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center">
+              <CheckCircle className="w-12 h-12 text-amber-500" />
+            </div>
           ) : (
             <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
               <XCircle className="w-12 h-12 text-destructive" />
@@ -71,15 +88,13 @@ const Success = () => {
             data-testid="success-status"
             className={cn(
               'font-display text-3xl font-bold mb-2',
-              isApproved ? 'text-success' : 'text-destructive'
+              isApproved ? 'text-success' : isEmAnalise ? 'text-amber-500' : 'text-destructive'
             )}
           >
-            {isApproved ? 'Pedido Aprovado!' : 'Crédito Reprovado'}
+            {getStatusTitle()}
           </h1>
           <p className="text-muted-foreground">
-            {isApproved
-              ? 'Seu pedido foi processado com sucesso. Em breve entraremos em contato.'
-              : 'Infelizmente seu crédito não foi aprovado. Tente novamente com pagamento à vista.'}
+            {getStatusMessage()}
           </p>
         </div>
 
