@@ -324,9 +324,11 @@ test.describe('Checkout', () => {
       await app.checkout.acceptTerms()
       await app.checkout.submit()
 
-      // Assert
-      const toastMessage = page.getByText('Falha ao consultar análise de crédito')
-      await expect(toastMessage).toBeVisible({ timeout: 15000 })
+      // Assert — toast-error evita strict mode (mesmo texto no aria-live do Sonner)
+      await expect(page.getByTestId('toast-error')).toContainText(
+        'Falha ao consultar análise de crédito',
+        { timeout: 15_000 }
+      )
     })
   })
 })

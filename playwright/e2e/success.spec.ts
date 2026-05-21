@@ -10,7 +10,7 @@ test.describe('Página de Sucesso', () => {
     await page.goto('/success')
 
     // Assert
-    await expect(page).toHaveURL('http://localhost:5173/') // A URL raiz. Playwright base_url + /
+    await expect(page).toHaveURL('/')
   })
 
   test('deve realizar navegações de pós-venda corretamente', async ({ app, page }) => {
