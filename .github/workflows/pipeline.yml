@@ -139,11 +139,28 @@ jobs:
       - name: Install Playwright Browser
         run: yarn playwright install --with-deps chromium
 
+      - name: Validate DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Secret DATABASE_URL não configurado no GitHub Actions"
+            exit 1
+          fi
+          DATABASE_URL=$(printf '%s' "$DATABASE_URL" | tr -d '\r\n')
+          echo "DATABASE_URL<<EOF" >> "$GITHUB_ENV"
+          printf '%s\n' "$DATABASE_URL" >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
+
+      - name: Test database connection
+        run: node playwright/support/database/verifyConnection.mjs
+
       - name: Run E2E Regression Tests
         run: yarn playwright test
         env:
           BASE_URL: ${{ needs.build-and-deploy.outputs.deployment-url }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CI: true
+          NODE_OPTIONS: '--dns-result-order=ipv4first'
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
