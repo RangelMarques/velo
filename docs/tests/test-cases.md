@@ -286,3 +286,77 @@ Validar que ordens não cadastradas ou strings aleatórias não vazam dados nem 
 
 #### Critérios de Aceitação
 - Se `orderId` não retorna dados exatos pela API, o feedback de falha "Pedido não encontrado" é retornado de forma amigável ao cliente.
+
+---
+
+### CT12 - Checkout e Tratamento de Erros - Falha na API de Análise de Crédito
+
+#### Objetivo
+Validar que o sistema exibe uma mensagem de erro e não trava caso a API de análise de crédito retorne erro (ex: 500) ou fique indisponível.
+
+#### Pré-Condições
+- Estar no Checkout com um carro base.
+- Preencher dados válidos para Financiamento.
+- A API de análise de crédito (`/credit-analysis`) deve falhar ou retornar status 500.
+
+#### Passos
+
+| Id | Ação | Resultado Esperado |
+|----|------|--------------------|
+| 1  | Preencher formulário e selecionar Financiamento | Tudo preenchido corretamente. |
+| 2  | Aceitar termos e clicar em "Confirmar Pedido" | Sistema envia requisição que falha (HTTP 500 ou rede). |
+| 3  | Observar a interface de usuário | O loading do botão some e um Toast/alerta de erro "Falha ao consultar análise de crédito. Verifique seus dados ou tente mais tarde." é exibido. O sistema não deve mudar de rota. |
+
+#### Resultados Esperados
+- O erro de rede é tratado suavemente e o usuário é notificado via Toast.
+
+#### Critérios de Aceitação
+- Exibir toast destrutivo com mensagem clara em caso de falha da API.
+- O botão não deve ficar em loading eterno.
+
+---
+
+### CT13 - Sucesso - Proteção de Rota (Acesso Direto)
+
+#### Objetivo
+Garantir que a página de Sucesso (`/success`) redireciona para a página inicial (`/`) caso seja acessada diretamente sem um pedido no estado.
+
+#### Pré-Condições
+- Não possuir nenhum pedido recém-criado em memória (location state vazio).
+
+#### Passos
+
+| Id | Ação | Resultado Esperado |
+|----|------|--------------------|
+| 1  | Acessar a URL `/success` diretamente no navegador | O carregamento da página de sucesso é interceptado. |
+| 2  | Verificar a URL após o acesso | O sistema redireciona imediatamente para a rota raiz `/`. |
+
+#### Resultados Esperados
+- O redirecionamento evita erros de renderização por falta de dados do pedido na tela de sucesso.
+
+#### Critérios de Aceitação
+- Acessos diretos à rota `/success` sem dados no `location.state.order` redirecionam para `/`.
+
+---
+
+### CT14 - Sucesso - Ações de Navegação
+
+#### Objetivo
+Validar que os botões de ação na página de sucesso ("Consultar Pedido" e "Configurar Outro") redirecionam o usuário corretamente.
+
+#### Pré-Condições
+- Estar na rota `/success` após finalizar um pedido com sucesso.
+
+#### Passos
+
+| Id | Ação | Resultado Esperado |
+|----|------|--------------------|
+| 1  | Clicar no botão "Consultar Pedido" | O sistema navega para a rota `/lookup`. |
+| 2  | Clicar no botão voltar do navegador (simulando retorno à success page) e clicar em "Configurar Outro" | O sistema navega para a rota `/configure`. |
+
+#### Resultados Esperados
+- Os calls-to-action de pós-venda estão funcionais e encaminham o usuário para as jornadas corretas.
+
+#### Critérios de Aceitação
+- O botão "Consultar Pedido" aponta para `/lookup`.
+- O botão "Configurar Outro" aponta para `/configure`.

@@ -296,5 +296,37 @@ test.describe('Checkout', () => {
       // Assert
       await app.checkout.expectResult('Pedido Aprovado!')
     })
+
+    test('deve exibir mensagem de erro quando a API de análise de crédito falhar (500)', async ({ app, page }) => {
+
+      const customer = {
+        ...defaultCustomer,
+        name: 'Peter',
+        lastname: 'Parker',
+        email: 'peter@dailybugle.com',
+      }
+
+      await deleteOrderByEmail(customer.email)
+      
+      // Mock network error
+      await page.route('**/functions/v1/credit-analysis', route => route.abort('failed'))
+
+      // Arrange
+      await app.configurator.expectPrice(customer.totalPrice)
+      await app.configurator.finishConfigurator()
+      await app.checkout.expectLoaded()
+
+      await app.checkout.fillCustomerData(customer)
+      await app.checkout.selectStore(customer.store)
+
+      // Act
+      await app.checkout.selectPaymentMethod(customer.paymentMethod)
+      await app.checkout.acceptTerms()
+      await app.checkout.submit()
+
+      // Assert
+      const toastMessage = page.getByText('Falha ao consultar análise de crédito')
+      await expect(toastMessage).toBeVisible({ timeout: 15000 })
+    })
   })
 })
