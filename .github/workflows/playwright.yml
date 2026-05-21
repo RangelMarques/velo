@@ -128,8 +128,15 @@ jobs:
           path: playwright-report
 
       - name: Publish Testdino Report
-        if: ${{ !cancelled() && secrets.TD_TOKEN != '' }}
-        run: npx tdpw upload ./playwright-report --token=${{ secrets.TD_TOKEN }}
+        if: ${{ !cancelled() }}
+        env:
+          TD_TOKEN: ${{ secrets.TD_TOKEN }}
+        run: |
+          if [ -n "$TD_TOKEN" ]; then
+            npx tdpw upload ./playwright-report --token="$TD_TOKEN"
+          else
+            echo "TD_TOKEN não configurado; pulando upload TestDino."
+          fi
 
   promote:
     name: Promote to Production
