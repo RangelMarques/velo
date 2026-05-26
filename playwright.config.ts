@@ -13,26 +13,21 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
 
 const isCI = !!process.env.CI;
-/** No CI, serve o bundle de preview localmente (mesmas env do Vercel Preview) em vez do URL do deploy. */
-const serveLocalPreviewInCI = isCI && process.env.E2E_SERVE_LOCAL === 'true';
-const baseURL = (
-  serveLocalPreviewInCI
-    ? 'http://127.0.0.1:4173'
-    : (process.env.BASE_URL ?? 'http://localhost:5173')
-).replace(/\/$/, '');
-const isRemoteTarget = !serveLocalPreviewInCI && !/localhost|127\.0\.0\.1/.test(baseURL);
+const baseURL = (process.env.BASE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+const isLocalTarget = /localhost|127\.0\.0\.1/.test(baseURL);
+const isRemoteTarget = !isLocalTarget;
+/** CI: o workflow sobe `vite preview` antes do Playwright (BASE_URL=127.0.0.1:4173). */
+const ciUsesExternalPreview = isCI && baseURL.includes('127.0.0.1:4173');
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
 
-  // Tempo máximo para cada teste completo (3o segundo é o padrão)
-  timeout: isCI ? 90_000 : 60_000,
+  timeout: isCI ? 60_000 : 60_000,
 
-  // Tempo máximo para assertions (toBeVisible(), toHaveText())
   expect: {
-    timeout: isCI ? 15_000 : 5_000,
+    timeout: isCI ? 10_000 : 5_000,
   },
 
 
@@ -41,8 +36,7 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -56,11 +50,10 @@ export default defineConfig({
   use: {
     baseURL,
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on',
+    trace: isCI ? 'retain-on-failure' : 'on',
 
-    actionTimeout: isCI ? 15_000 : 5_000,
-    navigationTimeout: isCI ? 30_000 : 10_000,
+    actionTimeout: isCI ? 10_000 : 5_000,
+    navigationTimeout: isCI ? 20_000 : 10_000,
   },
 
   /* Configure projects for major browsers */
@@ -101,23 +94,13 @@ export default defineConfig({
     // },
   ],
 
-  /* Local: dev server. CI: preview do build (env preview) — evita Vercel Protection / cold start. */
-  ...(serveLocalPreviewInCI
+  ...(!isCI && isLocalTarget
     ? {
         webServer: {
-          command: 'yarn preview --host 127.0.0.1 --port 4173',
-          url: 'http://127.0.0.1:4173',
-          reuseExistingServer: false,
-          timeout: 120_000,
+          command: 'yarn dev',
+          url: 'http://localhost:5173',
+          reuseExistingServer: true,
         },
       }
-    : !isCI && !isRemoteTarget
-      ? {
-          webServer: {
-            command: 'yarn dev',
-            url: 'http://localhost:5173',
-            reuseExistingServer: true,
-          },
-        }
-      : {}),
+    : {}),
 });

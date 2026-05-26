@@ -96,9 +96,12 @@ Assim o deploy de **Production** continua no Supabase de PRD e o deploy de **Pre
 | Secret | Uso |
 |--------|-----|
 | **`DATABASE_URL_PREVIEW`** | Banco **velo-sprint-preview** (senha URL-encoded; o CI usa pooler IPv4) |
-| **`VERCEL_*`** | Deploy preview + `vercel pull` no job E2E (mesmas `VITE_SUPABASE_*` do escopo Preview na Vercel) |
+| **`VITE_SUPABASE_URL_PREVIEW`** | Mesmo valor do `.env.preview` (recomendado — build E2E não depende só da Vercel) |
+| **`VITE_SUPABASE_PUBLISHABLE_KEY_PREVIEW`** | anon key do preview |
+| **`VITE_SUPABASE_PROJECT_ID_PREVIEW`** | `inhdobqkqjybeucjtqps` |
+| **`VERCEL_*`** | Deploy preview/produção na Vercel |
 
-Os testes E2E no CI rodam contra **`vite preview` local** (bundle com env de preview), não contra a URL do deploy. O job anterior ainda publica o preview na Vercel. Isso evita falhas por **Vercel Deployment Protection** (página de login no lugar do app) e cold start.
+Os testes E2E rodam em paralelo com o deploy: **`yarn build` + `vite preview` no runner** com env de preview. O smoke `online.spec.ts` roda primeiro; se o app não carregar, o job falha em segundos (sem 20 min de timeout).
 
 Mantenha **`DATABASE_URL`** se ainda usar testes locais contra produção.
 
