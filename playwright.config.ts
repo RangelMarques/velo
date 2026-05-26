@@ -13,8 +13,14 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
 
 const isCI = !!process.env.CI;
-const baseURL = (process.env.BASE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
-const isRemoteTarget = !/localhost|127\.0\.0\.1/.test(baseURL);
+/** No CI, serve o bundle de preview localmente (mesmas env do Vercel Preview) em vez do URL do deploy. */
+const serveLocalPreviewInCI = isCI && process.env.E2E_SERVE_LOCAL === 'true';
+const baseURL = (
+  serveLocalPreviewInCI
+    ? 'http://127.0.0.1:4173'
+    : (process.env.BASE_URL ?? 'http://localhost:5173')
+).replace(/\/$/, '');
+const isRemoteTarget = !serveLocalPreviewInCI && !/localhost|127\.0\.0\.1/.test(baseURL);
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -95,14 +101,23 @@ export default defineConfig({
     // },
   ],
 
-  /* Sobe dev server só localmente; no CI os testes usam o deploy da Vercel (BASE_URL) */
-  ...(!isCI && !isRemoteTarget
+  /* Local: dev server. CI: preview do build (env preview) — evita Vercel Protection / cold start. */
+  ...(serveLocalPreviewInCI
     ? {
         webServer: {
-          command: 'yarn dev',
-          url: 'http://localhost:5173',
-          reuseExistingServer: true,
+          command: 'yarn preview --host 127.0.0.1 --port 4173',
+          url: 'http://127.0.0.1:4173',
+          reuseExistingServer: false,
+          timeout: 120_000,
         },
       }
-    : {}),
+    : !isCI && !isRemoteTarget
+      ? {
+          webServer: {
+            command: 'yarn dev',
+            url: 'http://localhost:5173',
+            reuseExistingServer: true,
+          },
+        }
+      : {}),
 });

@@ -93,7 +93,12 @@ Assim o deploy de **Production** continua no Supabase de PRD e o deploy de **Pre
 
 #### GitHub Actions (E2E no preview)
 
-Secret **`DATABASE_URL_PREVIEW`**: connection string do banco **velo-sprint-preview** (pode ser a mesma URL `db....` do `.env.preview`; o CI converte para pooler automaticamente).
+| Secret | Uso |
+|--------|-----|
+| **`DATABASE_URL_PREVIEW`** | Banco **velo-sprint-preview** (senha URL-encoded; o CI usa pooler IPv4) |
+| **`VERCEL_*`** | Deploy preview + `vercel pull` no job E2E (mesmas `VITE_SUPABASE_*` do escopo Preview na Vercel) |
+
+Os testes E2E no CI rodam contra **`vite preview` local** (bundle com env de preview), não contra a URL do deploy. O job anterior ainda publica o preview na Vercel. Isso evita falhas por **Vercel Deployment Protection** (página de login no lugar do app) e cold start.
 
 Mantenha **`DATABASE_URL`** se ainda usar testes locais contra produção.
 

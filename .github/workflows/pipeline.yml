@@ -123,6 +123,11 @@ jobs:
     needs: [build-and-deploy]
     runs-on: ubuntu-latest
 
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -140,6 +145,52 @@ jobs:
 
       - name: Install Playwright Browser
         run: yarn playwright install --with-deps chromium
+
+      - name: Prepare Vercel token
+        run: |
+          missing=""
+          [ -z "$VERCEL_TOKEN" ] && missing="$missing VERCEL_TOKEN"
+          [ -z "$VERCEL_ORG_ID" ] && missing="$missing VERCEL_ORG_ID"
+          [ -z "$VERCEL_PROJECT_ID" ] && missing="$missing VERCEL_PROJECT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets ausentes para puxar env de preview:$missing"
+            exit 1
+          fi
+          VERCEL_TOKEN=$(printf '%s' "$VERCEL_TOKEN" | tr -d '[:space:]')
+          VERCEL_ORG_ID=$(printf '%s' "$VERCEL_ORG_ID" | tr -d '[:space:]')
+          VERCEL_PROJECT_ID=$(printf '%s' "$VERCEL_PROJECT_ID" | tr -d '[:space:]')
+          {
+            echo "VERCEL_TOKEN<<EOF"
+            printf '%s\n' "$VERCEL_TOKEN"
+            echo "EOF"
+            echo "VERCEL_ORG_ID<<EOF"
+            printf '%s\n' "$VERCEL_ORG_ID"
+            echo "EOF"
+            echo "VERCEL_PROJECT_ID<<EOF"
+            printf '%s\n' "$VERCEL_PROJECT_ID"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Build app for E2E (preview Supabase)
+        run: |
+          yarn vercel pull --yes \
+            --environment=preview \
+            --token="$VERCEL_TOKEN" \
+            --scope="${{ env.VERCEL_SCOPE }}"
+
+          if [ ! -f .vercel/.env.preview.local ]; then
+            echo "::error::vercel pull não gerou .vercel/.env.preview.local — confira VITE_SUPABASE_* no Vercel (escopo Preview)"
+            exit 1
+          fi
+
+          cp .vercel/.env.preview.local .env.production.local
+
+          if ! grep -q '^VITE_SUPABASE_URL=' .env.production.local; then
+            echo "::error::VITE_SUPABASE_URL ausente no env de Preview da Vercel"
+            exit 1
+          fi
+
+          yarn build
 
       - name: Validate DATABASE_URL
         env:
@@ -163,19 +214,10 @@ jobs:
       - name: Test database connection
         run: node playwright/support/database/verifyConnection.mjs
 
-      - name: Verify preview deployment is reachable
-        env:
-          BASE_URL: ${{ needs.build-and-deploy.outputs.deployment-url }}
-        run: |
-          BASE_URL=$(printf '%s' "$BASE_URL" | tr -d '\r\n')
-          echo "E2E BASE_URL=$BASE_URL"
-          curl -fsSL "$BASE_URL" -o /dev/null
-          curl -fsSL "$BASE_URL/order" -o /dev/null
-
       - name: Run E2E Regression Tests
         run: yarn playwright test
         env:
-          BASE_URL: ${{ needs.build-and-deploy.outputs.deployment-url }}
+          E2E_SERVE_LOCAL: 'true'
           CI: true
           NODE_OPTIONS: '--dns-result-order=ipv4first'
 
