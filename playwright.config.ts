@@ -10,7 +10,11 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
+
+const isCI = !!process.env.CI;
+const baseURL = (process.env.BASE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+const isRemoteTarget = !/localhost|127\.0\.0\.1/.test(baseURL);
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -18,11 +22,11 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 export default defineConfig({
 
   // Tempo máximo para cada teste completo (3o segundo é o padrão)
-  timeout: 60_000,
+  timeout: isCI ? 90_000 : 60_000,
 
-  // Tempo máximo para assertions (toBeVisible(), toHaveText()) 5 segundos
+  // Tempo máximo para assertions (toBeVisible(), toHaveText())
   expect: {
-    timeout: 5_000 // não vale a pena aumentar porque o teste pode ficar lento no tempo de execução, vale a pena usar o time explicito
+    timeout: isCI ? 15_000 : 5_000,
   },
 
 
@@ -44,19 +48,13 @@ export default defineConfig({
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'https://localhost:5173',
+    baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on',
 
-    // Tempo máximo para ações interativas como click(), fill()
-    // Quando o valor é 0, herda o limite do timeout geral do teste
-    actionTimeout: 5_000,
-
-    // Tempo máximo para navegações como goto(), waitForURL()
-    // Quando o valor é 0, herda o limite do timeout geral do teste
-    navigationTimeout: 10_000
+    actionTimeout: isCI ? 15_000 : 5_000,
+    navigationTimeout: isCI ? 30_000 : 10_000,
   },
 
   /* Configure projects for major browsers */
@@ -97,10 +95,14 @@ export default defineConfig({
     // },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'yarn dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-  },
+  /* Sobe dev server só localmente; no CI os testes usam o deploy da Vercel (BASE_URL) */
+  ...(!isCI && !isRemoteTarget
+    ? {
+        webServer: {
+          command: 'yarn dev',
+          url: 'http://localhost:5173',
+          reuseExistingServer: true,
+        },
+      }
+    : {}),
 });

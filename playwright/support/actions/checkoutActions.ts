@@ -22,6 +22,11 @@ export function createCheckoutActions(page: Page) {
       alerts
     },
 
+    async openOrder() {
+      await page.goto('/order', { waitUntil: 'domcontentloaded' })
+      await this.expectLoaded()
+    },
+
     async expectLoaded() {
       await expect(page.getByRole('heading', { name: 'Finalizar Pedido' })).toBeVisible()
     },

@@ -114,7 +114,9 @@ jobs:
             --target=preview \
             --token="$VERCEL_TOKEN" \
             --scope="${{ env.VERCEL_SCOPE }}")
+          URL=$(printf '%s' "$URL" | tr -d '\r\n')
           echo "deployment-url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Preview URL: $URL"
 
   e2e-tests:
     name: Run E2E Tests
@@ -160,6 +162,15 @@ jobs:
 
       - name: Test database connection
         run: node playwright/support/database/verifyConnection.mjs
+
+      - name: Verify preview deployment is reachable
+        env:
+          BASE_URL: ${{ needs.build-and-deploy.outputs.deployment-url }}
+        run: |
+          BASE_URL=$(printf '%s' "$BASE_URL" | tr -d '\r\n')
+          echo "E2E BASE_URL=$BASE_URL"
+          curl -fsSL "$BASE_URL" -o /dev/null
+          curl -fsSL "$BASE_URL/order" -o /dev/null
 
       - name: Run E2E Regression Tests
         run: yarn playwright test
