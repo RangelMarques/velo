@@ -1,4 +1,4 @@
-# CI/CD: testes unitários → preview Vercel → E2E → promote
+# CI/CD: testes unitários → preview Vercel → E2E → build/deploy PRD
 
 name: Continuous Deployment
 
@@ -141,15 +141,21 @@ jobs:
 
       - name: Validate DATABASE_URL
         env:
+          DATABASE_URL_PREVIEW: ${{ secrets.DATABASE_URL_PREVIEW }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::Secret DATABASE_URL não configurado no GitHub Actions"
+          if [ -n "$DATABASE_URL_PREVIEW" ]; then
+            DB_URL=$(printf '%s' "$DATABASE_URL_PREVIEW" | tr -d '\r\n')
+            echo "Usando DATABASE_URL_PREVIEW (Supabase velo-sprint-preview)"
+          elif [ -n "$DATABASE_URL" ]; then
+            DB_URL=$(printf '%s' "$DATABASE_URL" | tr -d '\r\n')
+            echo "Usando DATABASE_URL (fallback)"
+          else
+            echo "::error::Configure DATABASE_URL_PREVIEW no GitHub Actions (banco do preview)"
             exit 1
           fi
-          DATABASE_URL=$(printf '%s' "$DATABASE_URL" | tr -d '\r\n')
           echo "DATABASE_URL<<EOF" >> "$GITHUB_ENV"
-          printf '%s\n' "$DATABASE_URL" >> "$GITHUB_ENV"
+          printf '%s\n' "$DB_URL" >> "$GITHUB_ENV"
           echo "EOF" >> "$GITHUB_ENV"
 
       - name: Test database connection
@@ -180,15 +186,26 @@ jobs:
             echo "TD_TOKEN não configurado; pulando upload TestDino."
           fi
 
-  promote:
-    name: Promote to Production
-    needs: [build-and-deploy, e2e-tests]
+  build-and-deploy-production:
+    name: Build & Deploy Vercel Production
+    needs: [e2e-tests]
     runs-on: ubuntu-latest
 
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Prepare Vercel token
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
@@ -200,9 +217,22 @@ jobs:
           printf '%s\n' "$VERCEL_TOKEN" >> "$GITHUB_ENV"
           echo "EOF" >> "$GITHUB_ENV"
 
-      - name: Vercel promote
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Pull Vercel Config (production)
         run: |
-          npx vercel@latest promote "${{ needs.build-and-deploy.outputs.deployment-url }}" \
+          yarn vercel pull --yes \
+            --environment=production \
+            --token="$VERCEL_TOKEN" \
+            --scope="${{ env.VERCEL_SCOPE }}"
+
+      - name: Build Vercel (production)
+        run: yarn vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy production
+        run: |
+          yarn --silent vercel deploy --prebuilt --prod \
             --token="$VERCEL_TOKEN" \
             --scope="${{ env.VERCEL_SCOPE }}" \
             --yes

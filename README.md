@@ -49,17 +49,53 @@ Acesse: `http://localhost:5173`
 3. Escolha um nome e senha para o banco
 4. Aguarde a criação (~2 minutos)
 
-### 2. Variáveis de Ambiente
+### 2. Variáveis de Ambiente (produção + preview)
 
-Crie o arquivo `.env` na raiz do projeto:
+Dois projetos Supabase:
 
-```env
-VITE_SUPABASE_PROJECT_ID="seu_project_id"
-VITE_SUPABASE_PUBLISHABLE_KEY="sua_chave_anon_publica"
-VITE_SUPABASE_URL="https://seu_project_id.supabase.co"
+| Ambiente | Projeto | Arquivo local |
+|----------|---------|---------------|
+| **Produção** | `sugncocagmdocjbytveg` (Velô) | `.env` |
+| **Preview** | `inhdobqkqjybeucjtqps` (velo-sprint-preview) | `.env.preview` |
+
+**Produção (padrão — não apague):**
+
+```bash
+cp .env.example .env
+# Edite .env com as chaves reais de produção (Settings → API)
 ```
 
-> Encontre essas informações em: **Project Settings → API**
+**Preview (opcional, para testar o segundo projeto):**
+
+```bash
+cp .env.preview.example .env.preview
+# Edite .env.preview com as chaves do velo-sprint-preview
+```
+
+| Comando | Supabase usado |
+|---------|----------------|
+| `yarn dev` | **Produção** (`.env`) |
+| `yarn dev:preview` | **Preview** (`.env.preview`) |
+
+> Chaves em: **Project Settings → API** de cada projeto no dashboard.
+
+#### Vercel (preview deploy sem perder produção)
+
+No dashboard da Vercel → projeto → **Settings → Environment Variables**, cadastre as **mesmas chaves** `VITE_SUPABASE_*` duas vezes com escopos diferentes:
+
+| Variável | Production | Preview |
+|----------|------------|---------|
+| `VITE_SUPABASE_URL` | URL do projeto **prod** | URL do **velo-sprint-preview** |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | anon key **prod** | anon key **preview** |
+| `VITE_SUPABASE_PROJECT_ID` | `sugncocagmdocjbytveg` | `inhdobqkqjybeucjtqps` |
+
+Assim o deploy de **Production** continua no Supabase de PRD e o deploy de **Preview** usa o Supabase novo.
+
+#### GitHub Actions (E2E no preview)
+
+Secret **`DATABASE_URL_PREVIEW`**: connection string do banco **velo-sprint-preview** (pode ser a mesma URL `db....` do `.env.preview`; o CI converte para pooler automaticamente).
+
+Mantenha **`DATABASE_URL`** se ainda usar testes locais contra produção.
 
 ### 3. Deploy (banco + functions)
 

@@ -31,4 +31,11 @@ dist-ssr
 /playwright/.auth/
 
 .vercel
+.env
+.env.preview
 .env*.local
+!.env.example
+!.env.preview.example
+
+# Supabase CLI local state (não versionar)
+supabase/.temp/
